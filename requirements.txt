@@ -10,7 +10,7 @@ langchain-community==0.2.1
 langchain-core==0.2.3
 
 # Vector Store
-faiss-cpu==1.8.0
+faiss-cpu==1.12.0
 
 # Embeddings — Free local model (no API key needed)
 sentence-transformers==3.0.0
