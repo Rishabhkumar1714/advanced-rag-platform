@@ -69,7 +69,7 @@ def timeit(func):
         start = time.perf_counter()
         result = await func(*args, **kwargs)
         elapsed = (time.perf_counter() - start) * 1000
-        logger.info(f"{func.__qualname__} completed", duration_ms=round(elapsed, 2))
+        logger.info(f"{func.__qualname__} completed in {round(elapsed, 2)}ms")
         return result
 
     @functools.wraps(func)
@@ -77,7 +77,7 @@ def timeit(func):
         start = time.perf_counter()
         result = func(*args, **kwargs)
         elapsed = (time.perf_counter() - start) * 1000
-        logger.info(f"{func.__qualname__} completed", duration_ms=round(elapsed, 2))
+        logger.info(f"{func.__qualname__} completed in {round(elapsed, 2)}ms")
         return result
 
     if asyncio.iscoroutinefunction(func):

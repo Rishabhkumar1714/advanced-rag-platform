@@ -71,7 +71,7 @@ async def upload_document(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
-        logger.error("File ingestion failed", filename=file.filename, error=str(exc))
+        logger.error(f"File ingestion failed: {file.filename}: {exc}")
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(exc)}") from exc
 
 
@@ -101,7 +101,7 @@ async def create_document(
         )
         return doc_service.register(ingested_doc)
     except Exception as exc:
-        logger.error("Text ingestion failed", title=request.title, error=str(exc))
+        logger.error(f"Text ingestion failed: {request.title}: {exc}")
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 

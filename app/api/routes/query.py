@@ -38,7 +38,7 @@ async def query(
     try:
         return await rag.query(request)
     except Exception as exc:
-        logger.error("RAG query failed", error=str(exc))
+        logger.error(f"RAG query failed: {exc}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Query processing failed: {str(exc)}",
@@ -61,7 +61,7 @@ async def stream_query(
                 yield f"data: {token}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as exc:
-            logger.error("Streaming query failed", error=str(exc))
+            logger.error(f"Streaming query failed: {exc}")
             yield f"data: [ERROR] {str(exc)}\n\n"
 
     return StreamingResponse(
