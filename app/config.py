@@ -30,22 +30,25 @@ class Settings(BaseSettings):
     port: int = Field(default=8000)
     workers: int = Field(default=4)
 
-    # ── OpenAI ───────────────────────────────────────────────────────────────
-    openai_api_key: str = Field(default="")
-    openai_model: str = Field(default="gpt-4o")
-    openai_embedding_model: str = Field(default="text-embedding-3-large")
-    openai_max_tokens: int = Field(default=2048)
-    openai_temperature: float = Field(default=0.1)
+    # ── Groq (Free LLM API) ──────────────────────────────────────────────────
+    groq_api_key: str = Field(default="")
+    groq_model: str = Field(default="llama3-8b-8192")
+    groq_max_tokens: int = Field(default=2048)
+    groq_temperature: float = Field(default=0.1)
 
-    # ── Vector Store ─────────────────────────────────────────────────────────
+    # ── Embeddings (Free local sentence-transformers) ─────────────────────────
+    embedding_model: str = Field(default="all-MiniLM-L6-v2")
+    embedding_dimension: int = Field(default=384)
+    embedding_batch_size: int = Field(default=64)
+
+    # ── Vector Store (FAISS) ─────────────────────────────────────────────────
     faiss_index_path: str = Field(default="./data/processed/faiss_index")
-    faiss_index_dimension: int = Field(default=3072)
-    embedding_batch_size: int = Field(default=100)
+    faiss_index_dimension: int = Field(default=384)
 
     # ── Retrieval ────────────────────────────────────────────────────────────
     retrieval_top_k: int = Field(default=5)
     hybrid_search_alpha: float = Field(default=0.5)
-    similarity_threshold: float = Field(default=0.7)
+    similarity_threshold: float = Field(default=0.3)
     max_context_tokens: int = Field(default=4096)
     chunk_size: int = Field(default=512)
     chunk_overlap: int = Field(default=64)
@@ -53,15 +56,9 @@ class Settings(BaseSettings):
     reranker_top_n: int = Field(default=3)
 
     # ── Database ─────────────────────────────────────────────────────────────
-    database_url: str = Field(
-        default="postgresql+asyncpg://raguser:ragpass@localhost:5432/ragdb"
-    )
+    database_url: str = Field(default="sqlite+aiosqlite:///./data/rag.db")
     db_pool_size: int = Field(default=10)
     db_max_overflow: int = Field(default=20)
-
-    # ── Redis ────────────────────────────────────────────────────────────────
-    redis_url: str = Field(default="redis://localhost:6379/0")
-    cache_ttl: int = Field(default=3600)
 
     # ── Document Processing ──────────────────────────────────────────────────
     max_file_size_mb: int = Field(default=50)
@@ -73,7 +70,7 @@ class Settings(BaseSettings):
     log_format: str = Field(default="json")
 
     # ── CORS ─────────────────────────────────────────────────────────────────
-    allowed_origins: str = Field(default="http://localhost:3000")
+    allowed_origins: str = Field(default="*")
     allowed_methods: str = Field(default="GET,POST,PUT,DELETE,OPTIONS")
     allowed_headers: str = Field(default="*")
 
@@ -82,7 +79,7 @@ class Settings(BaseSettings):
     rate_limit_burst: int = Field(default=10)
 
     # ── Metrics ──────────────────────────────────────────────────────────────
-    metrics_enabled: bool = Field(default=True)
+    metrics_enabled: bool = Field(default=False)
     metrics_port: int = Field(default=9090)
 
     @field_validator("hybrid_search_alpha")

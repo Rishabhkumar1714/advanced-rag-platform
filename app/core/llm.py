@@ -1,14 +1,12 @@
 """
-LLM Client
-Async OpenAI wrapper with context-aware prompt construction,
-conversation history management, and streaming support.
+LLM Client — Groq API (Free)
+Uses Groq's free API with llama3-8b-8192 for ultra-fast inference.
 """
 
 import time
 from typing import AsyncGenerator, Dict, List, Optional
 
-from openai import AsyncOpenAI
-from openai.types.chat import ChatCompletion
+from groq import AsyncGroq
 
 from app.config import settings
 from app.models.query import SourceDocument
@@ -29,7 +27,6 @@ Guidelines:
 - Cite the source documents when relevant by referring to their titles.
 - Keep answers concise but thorough. Use bullet points or numbered lists when they improve clarity.
 - Never fabricate facts, statistics, or references not present in the context.
-- If the question is ambiguous, ask for clarification before answering.
 """
 
 CONTEXT_TEMPLATE = """<context>
@@ -45,10 +42,6 @@ def build_context_prompt(
     sources: List[SourceDocument],
     max_tokens: int = settings.max_context_tokens,
 ) -> str:
-    """
-    Build the user turn of the prompt by assembling retrieved chunks
-    into a context block, respecting the token budget.
-    """
     context_parts: List[str] = []
     used_tokens = count_tokens(CONTEXT_TEMPLATE.format(context_blocks="", question=question))
 
@@ -60,7 +53,6 @@ def build_context_prompt(
         )
         block_tokens = count_tokens(block)
         if used_tokens + block_tokens > max_tokens:
-            # Truncate the last block to fit
             remaining = max_tokens - used_tokens
             if remaining > 50:
                 block = truncate_to_token_limit(block, remaining)
@@ -78,14 +70,14 @@ def build_context_prompt(
 class LLMClient:
     def __init__(
         self,
-        model: str = settings.openai_model,
-        max_tokens: int = settings.openai_max_tokens,
-        temperature: float = settings.openai_temperature,
+        model: str = settings.groq_model,
+        max_tokens: int = settings.groq_max_tokens,
+        temperature: float = settings.groq_temperature,
     ):
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature
-        self._client = AsyncOpenAI(api_key=settings.openai_api_key)
+        self._client = AsyncGroq(api_key=settings.groq_api_key)
 
     def _build_messages(
         self,
@@ -95,7 +87,7 @@ class LLMClient:
     ) -> List[Dict[str, str]]:
         messages = [{"role": "system", "content": system_prompt}]
         if conversation_history:
-            messages.extend(conversation_history[-6:])  # Keep last 3 turns
+            messages.extend(conversation_history[-6:])
         messages.append({"role": "user", "content": user_prompt})
         return messages
 
@@ -105,14 +97,14 @@ class LLMClient:
         sources: List[SourceDocument],
         conversation_history: Optional[List[Dict[str, str]]] = None,
     ) -> Dict:
-        """Generate a non-streaming RAG response."""
+        """Generate a non-streaming RAG response via Groq."""
         user_prompt = build_context_prompt(question, sources)
         messages = self._build_messages(user_prompt, conversation_history)
 
         start = time.perf_counter()
-        response: ChatCompletion = await self._client.chat.completions.create(
+        response = await self._client.chat.completions.create(
             model=self.model,
-            messages=messages,  # type: ignore
+            messages=messages,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
         )
@@ -122,7 +114,7 @@ class LLMClient:
         usage = response.usage
 
         logger.info(
-            "LLM response generated",
+            "Groq LLM response generated",
             model=self.model,
             prompt_tokens=usage.prompt_tokens if usage else 0,
             completion_tokens=usage.completion_tokens if usage else 0,
@@ -143,21 +135,21 @@ class LLMClient:
         sources: List[SourceDocument],
         conversation_history: Optional[List[Dict[str, str]]] = None,
     ) -> AsyncGenerator[str, None]:
-        """Generate a streaming RAG response, yielding token chunks."""
+        """Stream RAG response tokens via Groq."""
         user_prompt = build_context_prompt(question, sources)
         messages = self._build_messages(user_prompt, conversation_history)
 
-        async with await self._client.chat.completions.create(
+        stream = await self._client.chat.completions.create(
             model=self.model,
-            messages=messages,  # type: ignore
+            messages=messages,
             max_tokens=self.max_tokens,
             temperature=self.temperature,
             stream=True,
-        ) as stream:
-            async for chunk in stream:
-                delta = chunk.choices[0].delta
-                if delta and delta.content:
-                    yield delta.content
+        )
+        async for chunk in stream:
+            delta = chunk.choices[0].delta
+            if delta and delta.content:
+                yield delta.content
 
 
 # Singleton
