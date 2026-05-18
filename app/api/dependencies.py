@@ -12,9 +12,9 @@ from app.config import settings
 from app.services.document_service import DocumentService, get_document_service
 from app.services.ingestion_service import IngestionService
 from app.services.rag_service import RAGService, get_rag_service
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 

@@ -13,9 +13,9 @@ from app.config import settings
 from app.core.embeddings import get_embedding_pipeline
 from app.core.vector_store import get_vector_store
 from app.models.query import RetrievalMode, SearchFilter, SourceDocument
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 # ── BM25 Implementation ───────────────────────────────────────────────────────

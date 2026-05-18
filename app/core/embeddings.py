@@ -9,9 +9,9 @@ from typing import Dict, List, Optional
 
 from app.config import settings
 from app.utils.helpers import chunk_list
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class EmbeddingPipeline:

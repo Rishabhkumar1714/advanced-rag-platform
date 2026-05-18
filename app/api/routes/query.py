@@ -8,9 +8,9 @@ from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import AuthDep, RAGDep
 from app.models.query import FeedbackRequest, QueryRequest, QueryResponse
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/query", tags=["Query"])
 
 

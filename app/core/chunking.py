@@ -10,9 +10,9 @@ from typing import List, Optional
 
 from app.config import settings
 from app.utils.helpers import count_tokens
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @dataclass

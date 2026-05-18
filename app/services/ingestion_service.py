@@ -25,9 +25,9 @@ from app.utils.helpers import (
     generate_uuid,
     get_file_extension,
 )
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class IngestionService:

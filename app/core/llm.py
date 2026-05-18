@@ -11,9 +11,9 @@ from groq import AsyncGroq
 from app.config import settings
 from app.models.query import SourceDocument
 from app.utils.helpers import count_tokens, truncate_to_token_limit
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 # ── Prompt Templates ──────────────────────────────────────────────────────────
 

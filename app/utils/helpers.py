@@ -61,8 +61,8 @@ def flatten_metadata(metadata: Dict[str, Any], prefix: str = "") -> Dict[str, An
 def timeit(func):
     import functools
     import asyncio
-    from app.utils.logger import get_logger
-    logger = get_logger("perf")
+    import logging
+    logger = logging.getLogger("perf")
 
     @functools.wraps(func)
     async def async_wrapper(*args, **kwargs):

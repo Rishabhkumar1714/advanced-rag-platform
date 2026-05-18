@@ -14,9 +14,9 @@ import numpy as np
 
 from app.config import settings
 from app.utils.helpers import ensure_directory
-from app.utils.logger import get_logger
+import logging
 
-logger = get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class FAISSVectorStore:
