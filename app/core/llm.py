@@ -1,5 +1,5 @@
 """
-LLM Client — Groq API (Free - llama3-8b-8192)
+LLM Client — Groq API (Free - llama-3.1-8b-instant)
 """
 
 import logging
@@ -41,7 +41,7 @@ class LLMClient:
     def __init__(self):
         # Read directly from environment to be safe
         self.api_key = os.environ.get("GROQ_API_KEY", "")
-        self.model = os.environ.get("GROQ_MODEL", "llama3-8b-8192")
+        self.model = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
         self.max_tokens = 1024
         self.temperature = 0.1
         self._client = None

@@ -93,7 +93,7 @@ async def diagnose() -> JSONResponse:
             from groq import AsyncGroq
             client = AsyncGroq(api_key=groq_key)
             response = await client.chat.completions.create(
-                model="llama3-8b-8192",
+                model="llama-3.1-8b-instant",
                 messages=[{"role": "user", "content": "Say OK"}],
                 max_tokens=5,
             )

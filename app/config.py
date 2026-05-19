@@ -32,7 +32,7 @@ class Settings(BaseSettings):
 
     # ── Groq (Free LLM API) ──────────────────────────────────────────────────
     groq_api_key: str = Field(default="")
-    groq_model: str = Field(default="llama3-8b-8192")
+    groq_model: str = Field(default="llama-3.1-8b-instant")
     groq_max_tokens: int = Field(default=2048)
     groq_temperature: float = Field(default=0.1)
 
