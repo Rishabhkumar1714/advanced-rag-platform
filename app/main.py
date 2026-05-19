@@ -104,3 +104,19 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
+
+# ── Mount static frontend ──────────────────────────────────────────────────
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+import os
+
+_frontend_dir = os.path.join(os.path.dirname(__file__), "..", "frontend")
+if os.path.exists(_frontend_dir):
+    app.mount("/static", StaticFiles(directory=_frontend_dir), name="static")
+
+@app.get("/app", include_in_schema=False)
+async def serve_frontend():
+    index = os.path.join(_frontend_dir, "index.html")
+    if os.path.exists(index):
+        return FileResponse(index)
+    return {"error": "Frontend not found"}
