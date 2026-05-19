@@ -19,26 +19,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Path to frontend folder
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting Advanced RAG Platform...")
+
+    # Pre-load the embedding model at startup so first request is fast
+    try:
+        from app.core.embeddings import get_embedding_pipeline
+        pipeline = get_embedding_pipeline()
+        pipeline._load_model()   # force download/load now
+        logger.info("Embedding model pre-loaded successfully")
+    except Exception as e:
+        logger.warning(f"Embedding model pre-load warning: {e}")
+
     try:
         from app.core.vector_store import get_vector_store
         get_vector_store()
         logger.info("Vector store initialized")
     except Exception as e:
         logger.warning(f"Vector store init warning: {e}")
+
     try:
         from app.services.rag_service import get_rag_service
         get_rag_service()
         logger.info("RAG service initialized")
     except Exception as e:
         logger.warning(f"RAG service init warning: {e}")
-    logger.info("Application ready!")
+
+    logger.info("All systems ready!")
     yield
     logger.info("Shutting down...")
 
@@ -53,7 +64,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ── CORS ──────────────────────────────────────────────────────────────────
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -62,7 +72,6 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # ── Request Logging ────────────────────────────────────────────────────────
     @app.middleware("http")
     async def log_requests(request: Request, call_next):
         start = time.perf_counter()
@@ -72,39 +81,29 @@ def create_app() -> FastAPI:
         response.headers["X-Response-Time"] = f"{duration_ms:.2f}ms"
         return response
 
-    # ── Global Exception Handler ───────────────────────────────────────────────
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.error(f"Unhandled exception on {request.url.path}: {exc}")
         return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            content={"detail": "An unexpected error occurred."},
+            content={"detail": f"Error: {str(exc)}"},
         )
 
-    # ── API Routes ─────────────────────────────────────────────────────────────
     from app.api.routes import documents, health, query
     api_prefix = "/api/v1"
     app.include_router(health.router, prefix=api_prefix)
     app.include_router(query.router, prefix=api_prefix)
     app.include_router(documents.router, prefix=api_prefix)
 
-    # ── Serve Frontend at root / ───────────────────────────────────────────────
     @app.get("/", include_in_schema=False)
     async def serve_frontend():
         index_path = os.path.join(FRONTEND_DIR, "index.html")
         if os.path.exists(index_path):
             return FileResponse(index_path, media_type="text/html")
-        return JSONResponse({
-            "service": "Advanced RAG Platform",
-            "version": "1.0.0",
-            "docs": "/docs",
-            "health": "/api/v1/health",
-        })
+        return JSONResponse({"service": "Advanced RAG Platform", "version": "1.0.0"})
 
-    # ── Mount static assets ────────────────────────────────────────────────────
     if os.path.exists(FRONTEND_DIR):
         app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
-        logger.info(f"Frontend mounted from {FRONTEND_DIR}")
 
     return app
 
