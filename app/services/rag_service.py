@@ -3,6 +3,7 @@ RAG Orchestration Service
 """
 
 import logging
+import traceback
 import uuid
 from datetime import datetime
 from typing import AsyncGenerator, List, Optional
@@ -22,43 +23,70 @@ class RAGService:
 
     async def query(self, request: QueryRequest) -> QueryResponse:
         query_id = str(uuid.uuid4())
-        logger.info(f"RAG query started: id={query_id}, question={request.question[:60]}")
+        logger.info(f"RAG query: id={query_id}, question={request.question[:60]}")
 
-        sources: List[SourceDocument] = await self._retriever.retrieve(
-            query=request.question, top_k=request.top_k, mode=request.retrieval_mode,
-            alpha=request.hybrid_alpha, filters=request.filters, rerank=request.rerank,
-        )
-        sources = [s for s in sources if s.score >= settings.similarity_threshold]
+        # Step 1: Retrieve
+        try:
+            sources: List[SourceDocument] = await self._retriever.retrieve(
+                query=request.question,
+                top_k=request.top_k,
+                mode=request.retrieval_mode,
+                alpha=request.hybrid_alpha,
+                filters=request.filters,
+                rerank=request.rerank,
+            )
+            sources = [s for s in sources if s.score >= settings.similarity_threshold]
+            logger.info(f"Retrieved {len(sources)} sources above threshold")
+        except Exception as e:
+            logger.error(f"Retrieval failed: {e}\n{traceback.format_exc()}")
+            sources = []  # continue with empty sources rather than crash
 
-        if not sources:
-            logger.warning(f"No relevant sources found for query_id={query_id}")
+        # Step 2: Generate
+        try:
+            llm_result = await self._llm.generate(
+                question=request.question,
+                sources=sources,
+                conversation_history=request.conversation_history,
+            )
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}\n{traceback.format_exc()}")
+            raise RuntimeError(f"LLM generation failed: {type(e).__name__}: {str(e)}")
 
-        llm_result = await self._llm.generate(
-            question=request.question, sources=sources, conversation_history=request.conversation_history,
-        )
-
-        response = QueryResponse(
-            query_id=query_id, question=request.question, answer=llm_result["answer"],
+        return QueryResponse(
+            query_id=query_id,
+            question=request.question,
+            answer=llm_result["answer"],
             sources=sources if request.include_sources else [],
-            retrieval_mode=request.retrieval_mode, total_chunks_retrieved=len(sources),
-            model_used=llm_result["model_used"], prompt_tokens=llm_result["prompt_tokens"],
-            completion_tokens=llm_result["completion_tokens"], latency_ms=llm_result["latency_ms"],
+            retrieval_mode=request.retrieval_mode,
+            total_chunks_retrieved=len(sources),
+            model_used=llm_result["model_used"],
+            prompt_tokens=llm_result["prompt_tokens"],
+            completion_tokens=llm_result["completion_tokens"],
+            latency_ms=llm_result["latency_ms"],
             created_at=datetime.utcnow(),
         )
-        logger.info(f"RAG query complete: id={query_id}, sources={len(sources)}, latency={llm_result['latency_ms']}ms")
-        return response
 
     async def stream_query(self, request: QueryRequest) -> AsyncGenerator[str, None]:
-        sources: List[SourceDocument] = await self._retriever.retrieve(
-            query=request.question, top_k=request.top_k, mode=request.retrieval_mode,
-            alpha=request.hybrid_alpha, filters=request.filters, rerank=request.rerank,
-        )
-        sources = [s for s in sources if s.score >= settings.similarity_threshold]
-        async for token in self._llm.stream(question=request.question, sources=sources, conversation_history=request.conversation_history):
+        try:
+            sources: List[SourceDocument] = await self._retriever.retrieve(
+                query=request.question, top_k=request.top_k,
+                mode=request.retrieval_mode, alpha=request.hybrid_alpha,
+                filters=request.filters, rerank=request.rerank,
+            )
+            sources = [s for s in sources if s.score >= settings.similarity_threshold]
+        except Exception as e:
+            logger.error(f"Retrieval failed in stream: {e}")
+            sources = []
+
+        async for token in self._llm.stream(
+            question=request.question, sources=sources,
+            conversation_history=request.conversation_history,
+        ):
             yield token
 
 
 _rag_service: Optional[RAGService] = None
+
 
 def get_rag_service() -> RAGService:
     global _rag_service

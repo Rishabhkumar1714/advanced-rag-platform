@@ -3,6 +3,7 @@ Query Routes
 """
 
 import logging
+import traceback
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -15,18 +16,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/query", tags=["Query"])
 
 
-@router.post("", response_model=QueryResponse, status_code=status.HTTP_200_OK, summary="Submit a RAG query")
+@router.post("", response_model=QueryResponse, status_code=status.HTTP_200_OK)
 async def query(
     request: QueryRequest,
     rag: RAGService = Depends(get_rag),
 ) -> QueryResponse:
-    if request.stream:
-        raise HTTPException(status_code=400, detail="Use /query/stream for streaming.")
     try:
         return await rag.query(request)
     except Exception as exc:
+        # Log the full traceback so we can see exactly what failed
         logger.error(f"RAG query failed: {exc}")
-        raise HTTPException(status_code=500, detail=f"Query failed: {str(exc)}")
+        logger.error(traceback.format_exc())
+        raise HTTPException(
+            status_code=500,
+            detail=f"Query failed: {type(exc).__name__}: {str(exc)}"
+        )
 
 
 @router.post("/stream", summary="Stream a RAG query response")
@@ -44,10 +48,10 @@ async def stream_query(
             yield f"data: [ERROR] {str(exc)}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+                             headers={"Cache-Control": "no-cache"})
 
 
-@router.post("/feedback", status_code=status.HTTP_202_ACCEPTED, summary="Submit feedback")
+@router.post("/feedback", status_code=status.HTTP_202_ACCEPTED)
 async def submit_feedback(feedback: FeedbackRequest) -> dict:
     logger.info(f"Feedback: query_id={feedback.query_id}, rating={feedback.rating}")
     return {"accepted": True, "query_id": feedback.query_id}
