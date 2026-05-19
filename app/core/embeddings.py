@@ -1,5 +1,8 @@
 """
-Embedding Pipeline - sentence-transformers (free, local, no API key needed)
+Embedding Pipeline
+Uses fastembed (ONNX-based) — lightweight, no PyTorch needed.
+Model: BAAI/bge-small-en-v1.5 (~25MB, 384 dimensions)
+Total memory footprint: ~80MB vs sentence-transformers ~700MB
 """
 
 import hashlib
@@ -13,7 +16,11 @@ logger = logging.getLogger(__name__)
 
 
 class EmbeddingPipeline:
-    def __init__(self, model_name: str = settings.embedding_model, batch_size: int = settings.embedding_batch_size):
+    def __init__(
+        self,
+        model_name: str = "BAAI/bge-small-en-v1.5",
+        batch_size: int = 32,
+    ):
         self.model_name = model_name
         self.batch_size = batch_size
         self._model = None
@@ -21,10 +28,10 @@ class EmbeddingPipeline:
 
     def _load_model(self):
         if self._model is None:
-            from sentence_transformers import SentenceTransformer
-            logger.info(f"Loading embedding model: {self.model_name}")
-            self._model = SentenceTransformer(self.model_name)
-            logger.info("Embedding model loaded successfully")
+            from fastembed import TextEmbedding
+            logger.info(f"Loading fastembed model: {self.model_name}")
+            self._model = TextEmbedding(model_name=self.model_name)
+            logger.info("Fastembed model loaded successfully")
         return self._model
 
     def _cache_key(self, text: str) -> str:
@@ -47,8 +54,9 @@ class EmbeddingPipeline:
         if uncached_texts:
             all_embeddings = []
             for batch in chunk_list(uncached_texts, self.batch_size):
-                embeddings = model.encode(batch, convert_to_numpy=True)
-                all_embeddings.extend(embeddings.tolist())
+                # fastembed returns a generator
+                batch_embeddings = list(model.embed(batch))
+                all_embeddings.extend([emb.tolist() for emb in batch_embeddings])
 
             for idx, embedding in zip(uncached_indices, all_embeddings):
                 key = self._cache_key(texts[idx])
@@ -72,6 +80,7 @@ class EmbeddingPipeline:
 
 
 _pipeline: Optional[EmbeddingPipeline] = None
+
 
 def get_embedding_pipeline() -> EmbeddingPipeline:
     global _pipeline
